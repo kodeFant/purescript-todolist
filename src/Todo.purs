@@ -77,10 +77,20 @@ enterEditModeAction todo model =
 updateNewTodoInputAction :: String -> TodoModel -> TodoModel
 updateNewTodoInputAction newValue model = model { newTodoInput = newValue }
 
+updateTodo :: Todo -> Array Todo -> Array Todo
+updateTodo updatedTodo allTodos =
+  let
+    indices = case Array.findIndex (\todo -> todo.id == updatedTodo.id) allTodos of
+      Just index -> [ index ]
+      Nothing -> []
+  in
+    allTodos |> Array.modifyAtIndices indices (\_ -> updatedTodo)
+
 updateTodoModel :: TodoModel -> TodoAction -> TodoModel
 updateTodoModel model action = case action of
   AddTodo newTodo -> model |> addTodoAction newTodo
   RemoveTodo todoId -> model |> removeTodoAction todoId
+  EditTodo updatedTodo -> model |> editTodoAction updatedTodo
   UpdateNewTodoInput newValue -> model |> updateNewTodoInputAction newValue
   EnterEditMode todo -> model |> enterEditModeAction todo
 
