@@ -26,47 +26,38 @@ data TodoAction
   | UpdateNewTodoId String
   | SetDone Todo
 
-type TodoModel
-  = { name :: String
-    , todos :: Array Todo
-    , newTodoInput :: String
-    , newTodoId :: String
-    , generatedId :: String
-    }
-
 type TodoDispatch
   = TodoAction -> Effect Unit
 
-initialModel :: String -> TodoModel
+type Model
+  = { todos :: Array Todo
+    , newTodoInput :: String
+    , generatedId :: String
+    }
+
+initialModel :: String -> Model
 initialModel generatedId =
-  { name: "Unnamed"
-  , todos: []
+  { todos: []
   , newTodoInput: ""
-  , newTodoId: ""
   , generatedId: generatedId
   }
 
 newTodo :: String -> String -> Todo
 newTodo generatedId description = { id: generatedId, name: description, completed: false, editField: Nothing }
 
-addTodoAction :: String -> String -> TodoModel -> TodoModel
+addTodoAction :: String -> String -> Model -> Model
 addTodoAction generatedId description model =
   model
-    { todos =
-      model.todos
-        |> Array.cons (newTodo generatedId description)
+    { todos = model.todos |> Array.cons (newTodo generatedId description)
     , newTodoInput = ""
     }
 
-removeTodoAction :: String -> TodoModel -> TodoModel
+removeTodoAction :: String -> Model -> Model
 removeTodoAction todoId model =
   model
-    { todos =
-      model.todos
-        |> Array.filter (\todo -> todo.id /= todoId)
-    }
+    { todos = model.todos |> Array.filter (\todo -> todo.id /= todoId) }
 
-updateNewTodoInputAction :: String -> TodoModel -> TodoModel
+updateNewTodoInputAction :: String -> Model -> Model
 updateNewTodoInputAction newValue model = model { newTodoInput = newValue }
 
 updateTodo :: Todo -> Array Todo -> Array Todo
@@ -78,8 +69,8 @@ updateTodo updatedTodo allTodos =
   in
     allTodos |> Array.modifyAtIndices indices (\_ -> updatedTodo)
 
-updateTodoModel :: TodoModel -> TodoAction -> TodoModel
-updateTodoModel model action = case action of
+updateModel :: Model -> TodoAction -> Model
+updateModel model action = case action of
   AddTodo description -> model |> addTodoAction model.generatedId description
   RemoveTodo todoId -> model |> removeTodoAction todoId
   UpdateNewTodoInput newValue -> model |> updateNewTodoInputAction newValue
@@ -88,7 +79,7 @@ updateTodoModel model action = case action of
 
 todoListRoot :: React.Component {}
 todoListRoot = do
-  todoReducer <- React.mkReducer updateTodoModel
+  todoReducer <- React.mkReducer updateModel
   firstTodoId <- UUID.genUUID
   React.component "TodoComponent" \_ -> React.do
     model /\ dispatch <- React.useReducer (initialModel (show firstTodoId)) (todoReducer)
@@ -106,7 +97,7 @@ todoListRoot = do
           }
       )
 
-newTodoView :: TodoDispatch -> TodoModel -> React.JSX
+newTodoView :: TodoDispatch -> Model -> React.JSX
 newTodoView dispatch model =
   ( R.div
       { children:
@@ -114,18 +105,14 @@ newTodoView dispatch model =
               { value: model.newTodoInput
               , placeholder: "New todo"
               , onChange:
-                  React.do
-                    Event.handler targetValue
-                      ( \value ->
-                          dispatch (UpdateNewTodoInput $ fromMaybe model.newTodoInput value)
-                      )
+                  Event.handler targetValue $ \value -> dispatch (UpdateNewTodoInput $ fromMaybe model.newTodoInput value)
               }
           , R.button { children: [ R.text "Add" ], onClick: Event.handler_ $ dispatch $ AddTodo model.newTodoInput }
           ]
       }
   )
 
-viewTodos :: TodoDispatch -> TodoModel -> React.JSX
+viewTodos :: TodoDispatch -> Model -> React.JSX
 viewTodos dispatch model =
   R.div
     { children:
@@ -139,7 +126,7 @@ viewTodos dispatch model =
         ]
     }
 
-viewCompletedTodos :: TodoDispatch -> TodoModel -> React.JSX
+viewCompletedTodos :: TodoDispatch -> Model -> React.JSX
 viewCompletedTodos dispatch model =
   R.div
     { children:
@@ -153,7 +140,7 @@ viewCompletedTodos dispatch model =
         ]
     }
 
-viewTodo :: TodoDispatch -> Todo -> TodoModel -> React.JSX
+viewTodo :: TodoDispatch -> Todo -> Model -> React.JSX
 viewTodo dispatch todo model =
   R.li
     { key: todo.id
