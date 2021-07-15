@@ -6,7 +6,6 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.UUID as UUID
 import Effect (Effect)
-import Effect.Console (logShow)
 import React.Basic.DOM as R
 import React.Basic.DOM.Events (targetValue)
 import React.Basic.Events as Event
@@ -94,7 +93,6 @@ todoListRoot = do
   React.component "TodoComponent" \_ -> React.do
     model /\ dispatch <- React.useReducer (initialModel (show firstTodoId)) (todoReducer)
     React.useEffect model.todos do
-      logShow "Hello"
       newTodoId <- UUID.genUUID
       dispatch $ UpdateNewTodoId $ show newTodoId
       pure mempty
