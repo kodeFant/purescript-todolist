@@ -15,7 +15,7 @@ import React.Basic.Hooks as React
 -- MODEL
 type Todo
   = { id :: String
-    , name :: String
+    , description :: String
     , completed :: Boolean
     , editField :: Maybe String
     }
@@ -34,7 +34,7 @@ initialModel generatedId =
   }
 
 newTodo :: String -> String -> Todo
-newTodo generatedId description = { id: generatedId, name: description, completed: false, editField: Nothing }
+newTodo generatedId description = { id: generatedId, description: description, completed: false, editField: Nothing }
 
 -- UPDATE
 data TodoAction
@@ -148,7 +148,7 @@ viewTodo dispatch todo model =
   R.li
     { key: todo.id
     , children:
-        [ maybe (R.text todo.name) (\_ -> R.text "Edit mode") todo.editField
+        [ maybe (R.text todo.description) (\_ -> R.text "Edit mode") todo.editField
         , if todo.completed then R.text " (Done)" else R.text ""
         , if not todo.completed then
             R.button
