@@ -18,6 +18,7 @@ to generate this file without the comments in this block.
   , "psci-support"
   , "react-basic-dom"
   , "react-basic-hooks"
+  , "uuid"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

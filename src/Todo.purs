@@ -3,7 +3,9 @@ module Todo (todoListRoot) where
 import CoolPrelude
 import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.UUID as UUID
 import Effect (Effect)
+import Effect.Console (logShow)
 import React.Basic.DOM as R
 import React.Basic.DOM.Events (targetValue)
 import React.Basic.Events as Event
@@ -18,37 +20,43 @@ type Todo
     }
 
 data TodoAction
-  = AddTodo Todo
+  = AddTodo String
   | RemoveTodo String
   | EditTodo Todo
   | UpdateNewTodoInput String
   | EnterEditMode Todo
+  | UpdateNewTodoId String
+  | SetDone Todo
 
 type TodoModel
   = { name :: String
     , todos :: Array Todo
     , newTodoInput :: String
+    , newTodoId :: String
+    , generatedId :: String
     }
 
 type TodoDispatch
   = TodoAction -> Effect Unit
 
-initialModel :: TodoModel
-initialModel =
+initialModel :: String -> TodoModel
+initialModel generatedId =
   { name: "Unnamed"
-  , todos:
-      [ { name: "Test", id: "testId1", completed: false, editField: Nothing }
-      , { name: "Test 2", id: "testId2", completed: false, editField: Nothing }
-      ]
+  , todos: []
   , newTodoInput: ""
+  , newTodoId: ""
+  , generatedId: generatedId
   }
 
-addTodoAction :: Todo -> TodoModel -> TodoModel
-addTodoAction newTodo model =
+newTodo :: String -> String -> Todo
+newTodo generatedId description = { id: generatedId, name: description, completed: false, editField: Nothing }
+
+addTodoAction :: String -> String -> TodoModel -> TodoModel
+addTodoAction generatedId description model =
   model
     { todos =
       model.todos
-        |> Array.cons newTodo
+        |> Array.cons (newTodo generatedId description)
     , newTodoInput = ""
     }
 
@@ -57,7 +65,7 @@ removeTodoAction todoId model =
   model
     { todos =
       model.todos
-        |> Array.dropWhile (\todo -> todo.id == todoId)
+        |> Array.filter (\todo -> todo.id /= todoId)
     }
 
 editTodoAction :: Todo -> TodoModel -> TodoModel
@@ -88,43 +96,81 @@ updateTodo updatedTodo allTodos =
 
 updateTodoModel :: TodoModel -> TodoAction -> TodoModel
 updateTodoModel model action = case action of
-  AddTodo newTodo -> model |> addTodoAction newTodo
+  AddTodo description -> model |> addTodoAction model.generatedId description
   RemoveTodo todoId -> model |> removeTodoAction todoId
   EditTodo updatedTodo -> model |> editTodoAction updatedTodo
   UpdateNewTodoInput newValue -> model |> updateNewTodoInputAction newValue
   EnterEditMode todo -> model |> enterEditModeAction todo
+  UpdateNewTodoId idString -> model { generatedId = idString }
+  SetDone todo -> model { todos = model.todos |> updateTodo (todo { completed = true }) }
 
 todoListRoot :: React.Component {}
 todoListRoot = do
   todoReducer <- React.mkReducer updateTodoModel
+  firstTodoId <- UUID.genUUID
   React.component "TodoComponent" \_ -> React.do
-    model /\ dispatch <- React.useReducer initialModel (todoReducer)
+    model /\ dispatch <- React.useReducer (initialModel (show firstTodoId)) (todoReducer)
+    React.useEffect model.todos do
+      logShow "Hello"
+      newTodoId <- UUID.genUUID
+      dispatch $ UpdateNewTodoId $ show newTodoId
+      pure mempty
     pure
       ( R.div
-          { children: [ newTodoView dispatch model, viewTodos dispatch model ]
+          { children:
+              [ newTodoView dispatch model
+              , viewTodos dispatch model
+              , viewCompletedTodos dispatch model
+              ]
           }
       )
 
 newTodoView :: TodoDispatch -> TodoModel -> React.JSX
 newTodoView dispatch model =
+  ( R.div
+      { children:
+          [ R.input
+              { value: model.newTodoInput
+              , placeholder: "New todo"
+              , onChange:
+                  React.do
+                    Event.handler targetValue
+                      ( \value ->
+                          dispatch (UpdateNewTodoInput $ fromMaybe model.newTodoInput value)
+                      )
+              }
+          , R.button { children: [ R.text "Add" ], onClick: Event.handler_ $ dispatch $ AddTodo model.newTodoInput }
+          ]
+      }
+  )
+
+viewTodos :: TodoDispatch -> TodoModel -> React.JSX
+viewTodos dispatch model =
   R.div
     { children:
-        [ R.input
-            { value: model.newTodoInput
-            , placeholder: "New todo"
-            , onChange:
-                Event.handler targetValue
-                  ( \value ->
-                      dispatch (UpdateNewTodoInput $ fromMaybe model.newTodoInput value)
-                  )
+        [ R.h2 { children: [ R.text "Current Tasks" ] }
+        , R.ul
+            { children:
+                model.todos
+                  |> Array.filter (\todo -> todo.completed == false)
+                  |> map (\todo -> viewTodo dispatch todo model)
             }
         ]
     }
 
-viewTodos :: TodoDispatch -> TodoModel -> React.JSX
-viewTodos dispatch model =
-  R.ul
-    { children: map (\todo -> viewTodo dispatch todo model) model.todos }
+viewCompletedTodos :: TodoDispatch -> TodoModel -> React.JSX
+viewCompletedTodos dispatch model =
+  R.div
+    { children:
+        [ R.h2 { children: [ R.text "Completed Tasks" ] }
+        , R.ul
+            { children:
+                model.todos
+                  |> Array.filter (\todo -> todo.completed)
+                  |> map (\todo -> viewTodo dispatch todo model)
+            }
+        ]
+    }
 
 viewTodo :: TodoDispatch -> Todo -> TodoModel -> React.JSX
 viewTodo dispatch todo model =
@@ -132,10 +178,14 @@ viewTodo dispatch todo model =
     { key: todo.id
     , children:
         [ maybe (R.text todo.name) (\_ -> R.text "Edit mode") todo.editField
-        , R.button
-            { onClick: Event.handler_ (dispatch (EnterEditMode todo))
-            , children: [ R.text "Edit" ]
-            }
+        , if todo.completed then R.text " (Done)" else R.text ""
+        , if not todo.completed then
+            R.button
+              { onClick: Event.handler_ (dispatch (SetDone todo))
+              , children: [ R.text "Set Done" ]
+              }
+          else
+            R.text ""
         , R.button
             { onClick: Event.handler_ (dispatch (RemoveTodo todo.id))
             , children: [ R.text "Delete" ]
