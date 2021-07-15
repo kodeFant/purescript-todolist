@@ -12,22 +12,13 @@ import React.Basic.Events as Event
 import React.Basic.Hooks ((/\))
 import React.Basic.Hooks as React
 
+-- MODEL
 type Todo
   = { id :: String
     , name :: String
     , completed :: Boolean
     , editField :: Maybe String
     }
-
-data TodoAction
-  = AddTodo String
-  | RemoveTodo String
-  | UpdateNewTodoInput String
-  | UpdateNewTodoId String
-  | SetDone Todo
-
-type TodoDispatch
-  = TodoAction -> Effect Unit
 
 type Model
   = { todos :: Array Todo
@@ -45,6 +36,17 @@ initialModel generatedId =
 newTodo :: String -> String -> Todo
 newTodo generatedId description = { id: generatedId, name: description, completed: false, editField: Nothing }
 
+-- UPDATE
+data TodoAction
+  = AddTodo String
+  | RemoveTodo Todo
+  | UpdateNewTodoInput String
+  | UpdateNewTodoId String
+  | SetDone Todo
+
+type TodoDispatch
+  = TodoAction -> Effect Unit
+
 addTodoAction :: String -> String -> Model -> Model
 addTodoAction generatedId description model =
   model
@@ -52,10 +54,10 @@ addTodoAction generatedId description model =
     , newTodoInput = ""
     }
 
-removeTodoAction :: String -> Model -> Model
-removeTodoAction todoId model =
+removeTodoAction :: Todo -> Model -> Model
+removeTodoAction deletedTodo model =
   model
-    { todos = model.todos |> Array.filter (\todo -> todo.id /= todoId) }
+    { todos = model.todos |> Array.filter (\todo -> todo.id /= deletedTodo.id) }
 
 updateNewTodoInputAction :: String -> Model -> Model
 updateNewTodoInputAction newValue model = model { newTodoInput = newValue }
@@ -69,17 +71,18 @@ updateTodo updatedTodo allTodos =
   in
     allTodos |> Array.modifyAtIndices indices (\_ -> updatedTodo)
 
-updateModel :: Model -> TodoAction -> Model
-updateModel model action = case action of
+update :: Model -> TodoAction -> Model
+update model action = case action of
   AddTodo description -> model |> addTodoAction model.generatedId description
-  RemoveTodo todoId -> model |> removeTodoAction todoId
+  RemoveTodo todo -> model |> removeTodoAction todo
   UpdateNewTodoInput newValue -> model |> updateNewTodoInputAction newValue
   UpdateNewTodoId idString -> model { generatedId = idString }
   SetDone todo -> model { todos = model.todos |> updateTodo (todo { completed = true }) }
 
+-- VIEW
 todoListRoot :: React.Component {}
 todoListRoot = do
-  todoReducer <- React.mkReducer updateModel
+  todoReducer <- React.mkReducer update
   firstTodoId <- UUID.genUUID
   React.component "TodoComponent" \_ -> React.do
     model /\ dispatch <- React.useReducer (initialModel (show firstTodoId)) (todoReducer)
@@ -155,7 +158,7 @@ viewTodo dispatch todo model =
           else
             R.text ""
         , R.button
-            { onClick: Event.handler_ (dispatch (RemoveTodo todo.id))
+            { onClick: Event.handler_ (dispatch (RemoveTodo todo))
             , children: [ R.text "Delete" ]
             }
         ]
