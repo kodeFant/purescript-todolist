@@ -1,6 +1,7 @@
 module Todo (todoListRoot) where
 
-import CoolPrelude
+import Prelude
+import Data.Pipe ((|>))
 import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.UUID as UUID
@@ -22,9 +23,7 @@ type Todo
 data TodoAction
   = AddTodo String
   | RemoveTodo String
-  | EditTodo Todo
   | UpdateNewTodoInput String
-  | EnterEditMode Todo
   | UpdateNewTodoId String
   | SetDone Todo
 
@@ -68,20 +67,6 @@ removeTodoAction todoId model =
         |> Array.filter (\todo -> todo.id /= todoId)
     }
 
-editTodoAction :: Todo -> TodoModel -> TodoModel
-editTodoAction newTodo model =
-  let
-    todoIndex = Array.findIndex (\todo -> todo.id == newTodo.id) model.todos
-  in
-    maybe model (\index -> model { todos = model.todos }) todoIndex
-
-enterEditModeAction :: Todo -> TodoModel -> TodoModel
-enterEditModeAction todo model =
-  let
-    todoIndex = Array.findIndex (\t -> t.id == todo.id) model.todos
-  in
-    maybe model (\index -> model { todos = model.todos |> updateTodo (todo { editField = Just todo.name }) }) todoIndex
-
 updateNewTodoInputAction :: String -> TodoModel -> TodoModel
 updateNewTodoInputAction newValue model = model { newTodoInput = newValue }
 
@@ -98,9 +83,7 @@ updateTodoModel :: TodoModel -> TodoAction -> TodoModel
 updateTodoModel model action = case action of
   AddTodo description -> model |> addTodoAction model.generatedId description
   RemoveTodo todoId -> model |> removeTodoAction todoId
-  EditTodo updatedTodo -> model |> editTodoAction updatedTodo
   UpdateNewTodoInput newValue -> model |> updateNewTodoInputAction newValue
-  EnterEditMode todo -> model |> enterEditModeAction todo
   UpdateNewTodoId idString -> model { generatedId = idString }
   SetDone todo -> model { todos = model.todos |> updateTodo (todo { completed = true }) }
 

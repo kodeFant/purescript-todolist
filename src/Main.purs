@@ -1,6 +1,6 @@
 module Main where
 
-import CoolPrelude
+import Prelude
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Exception (throw)
