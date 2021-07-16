@@ -17,7 +17,6 @@ type Todo
   = { id :: String
     , description :: String
     , completed :: Boolean
-    , editField :: Maybe String
     }
 
 type Model
@@ -57,7 +56,6 @@ newTodo generatedId description =
   { id: generatedId
   , description: description
   , completed: false
-  , editField: Nothing
   }
 
 addTodoAction :: String -> String -> Model -> Model
@@ -153,7 +151,7 @@ viewTodo dispatch todo model =
   R.li
     { key: todo.id
     , children:
-        [ maybe (R.text todo.description) (\_ -> R.text "Edit mode") todo.editField
+        [ (R.text todo.description)
         , if todo.completed then R.text " (Done)" else R.text ""
         , if not todo.completed then
             R.button
