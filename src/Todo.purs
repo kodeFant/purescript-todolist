@@ -3,7 +3,7 @@ module Todo (todoListRoot) where
 import Prelude
 import Data.Pipe ((|>))
 import Data.Array as Array
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.UUID as UUID
 import Effect (Effect)
 import React.Basic.DOM as R
