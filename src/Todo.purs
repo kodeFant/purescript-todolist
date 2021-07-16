@@ -33,9 +33,6 @@ initialModel generatedId =
   , generatedId: generatedId
   }
 
-newTodo :: String -> String -> Todo
-newTodo generatedId description = { id: generatedId, description: description, completed: false, editField: Nothing }
-
 -- UPDATE
 data TodoAction
   = AddTodo String
@@ -44,8 +41,24 @@ data TodoAction
   | UpdateNewTodoId String
   | SetDone Todo
 
+update :: Model -> TodoAction -> Model
+update model action = case action of
+  AddTodo description -> model |> addTodoAction model.generatedId description
+  RemoveTodo todo -> model |> removeTodoAction todo
+  UpdateNewTodoInput newValue -> model |> updateNewTodoInputAction newValue
+  UpdateNewTodoId idString -> model { generatedId = idString }
+  SetDone todo -> model { todos = model.todos |> updateTodo (todo { completed = true }) }
+
 type TodoDispatch
   = TodoAction -> Effect Unit
+
+newTodo :: String -> String -> Todo
+newTodo generatedId description =
+  { id: generatedId
+  , description: description
+  , completed: false
+  , editField: Nothing
+  }
 
 addTodoAction :: String -> String -> Model -> Model
 addTodoAction generatedId description model =
@@ -70,14 +83,6 @@ updateTodo updatedTodo allTodos =
       Nothing -> []
   in
     allTodos |> Array.modifyAtIndices indices (\_ -> updatedTodo)
-
-update :: Model -> TodoAction -> Model
-update model action = case action of
-  AddTodo description -> model |> addTodoAction model.generatedId description
-  RemoveTodo todo -> model |> removeTodoAction todo
-  UpdateNewTodoInput newValue -> model |> updateNewTodoInputAction newValue
-  UpdateNewTodoId idString -> model { generatedId = idString }
-  SetDone todo -> model { todos = model.todos |> updateTodo (todo { completed = true }) }
 
 -- VIEW
 todoListRoot :: React.Component {}
